@@ -39,6 +39,7 @@
 #import "NSMutableData+Bitcoin.h"
 #import "NSData+Bitcoin.h"
 #import "BREventManager.h"
+#import "BRBIP32Sequence.h"
 
 #define SCAN_TIP      NSLocalizedString(@"Scan someone else's QR code to get their bitcoin address. "\
                                          "You can send a payment to anyone with an address.", nil)
@@ -178,6 +179,30 @@ static NSString *sanitizeString(NSString *s)
                             return [manager.wallet addressIsUsed:obj];
                         }].allObjects componentsJoinedByString:@"\n"];
 
+                    if (xsuccess) callback = [NSURL URLWithString:xsuccess];
+                    self.url = nil;
+                }
+            }
+            else if (xerror || xsuccess) {
+                callback = [NSURL URLWithString:(xerror) ? xerror : xsuccess];
+                [UIPasteboard generalPasteboard].string = @"";
+                [self cancel:nil];
+            }
+        }
+        else if ([url.host isEqual:@"xpub"] || [url.path isEqual:@"/xpub"]) {
+            if ((manager.didAuthenticate || [manager authenticateWithPrompt:nil andTouchId:YES])
+                && ! self.clearClipboard) {
+                
+                if (! [self.url isEqual:url]) {
+                    self.url = url;
+                    [[[UIAlertView alloc]
+                      initWithTitle:NSLocalizedString(@"copy master public key (xpub) to clipboard?", nil)
+                      message:nil delegate:self cancelButtonTitle:NSLocalizedString(@"cancel", nil)
+                      otherButtonTitles:NSLocalizedString(@"copy", nil), nil] show];
+                }
+                else {
+                    [UIPasteboard generalPasteboard].string = [[BRBIP32Sequence new]
+                                                               serializedMasterPublicKey:manager.masterPublicKey];
                     if (xsuccess) callback = [NSURL URLWithString:xsuccess];
                     self.url = nil;
                 }
