@@ -192,7 +192,7 @@
                     else if ([bip32 parseMasterPublicKey:s]) {
                         NSMutableData *mpk = [[bip32 parseMasterPublicKey:s] mutableCopy];
 
-                        [mpk appendBytes:"\0" length:1]; // mark master pub key as watch only
+                        [mpk appendBytes:"\0" length:1]; // mark master pubkey as watch only
                         manager.masterPublicKey = mpk;
                         [BRAddressEntity deleteObjects:[BRAddressEntity allObjects]];
                         break;
