@@ -157,7 +157,7 @@
                                                                      (CFStringRef)phrase));
     
     dispatch_once(&onceToken, ^{
-        NSMutableCharacterSet *set = [NSMutableCharacterSet letterCharacterSet];
+        NSMutableCharacterSet *set = [NSMutableCharacterSet alphanumericCharacterSet];
         
         ws = [NSCharacterSet whitespaceAndNewlineCharacterSet];
         [set formUnionWithCharacterSet:ws];
