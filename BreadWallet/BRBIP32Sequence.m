@@ -244,7 +244,7 @@ static NSString *serialize(uint8_t depth, uint32_t fingerprint, uint32_t child, 
 
 #pragma mark - serializations
 
-- (NSString *)serializedPrivateMasterFromSeed:(NSData *)seed
+- (NSString *)serializedMasterPrivateKeyFromSeed:(NSData *)seed
 {
     if (! seed) return nil;
 
@@ -266,6 +266,44 @@ static NSString *serialize(uint8_t depth, uint32_t fingerprint, uint32_t child, 
     BRPubKey pubKey = *(BRPubKey *)((const uint8_t *)masterPublicKey.bytes + 36);
 
     return serialize(1, fingerprint, 0 | BIP32_HARD, chain, [NSData dataWithBytes:&pubKey length:sizeof(pubKey)]);
+}
+
+- (NSData *)parseMasterPrivateKey:(NSString *)xprv
+{
+    NSData *d = [xprv base58checkToData];
+    NSMutableData *mpk = nil;
+    
+    if (d.length == 78 && *(uint32_t *)d.bytes == *(uint32_t *)BIP32_XPRV) {
+        uint8_t depth = *((uint8_t *)d.bytes + 4);
+        uint32_t child = CFSwapInt32BigToHost(*(uint32_t *)((uint8_t *)d.bytes + 9));
+        
+        if (depth == 0 && child == 0) {
+            mpk = [NSMutableData secureData];
+            [mpk appendBytes:((uint8_t *)d.bytes + 5) length:4];
+            [mpk appendBytes:((uint8_t *)d.bytes + 13) length:65];
+        }
+    }
+    
+    return mpk;
+}
+
+- (NSData *)parseMasterPublicKey:(NSString *)xpub
+{
+    NSData *d = [xpub base58checkToData];
+    NSMutableData *mpk = nil;
+    
+    if (d.length == 78 && *(uint32_t *)d.bytes == *(uint32_t *)BIP32_XPUB) {
+        uint8_t depth = *((uint8_t *)d.bytes + 4);
+        uint32_t child = CFSwapInt32BigToHost(*(uint32_t *)((uint8_t *)d.bytes + 9));
+        
+        if (depth == 1 && child == (0 | BIP32_HARD)) {
+            mpk = [NSMutableData secureData];
+            [mpk appendBytes:((uint8_t *)d.bytes + 5) length:4];
+            [mpk appendBytes:((uint8_t *)d.bytes + 13) length:65];
+        }
+    }
+    
+    return mpk;
 }
 
 @end

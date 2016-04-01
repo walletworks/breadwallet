@@ -998,17 +998,17 @@
                           @"[BRBIP32Sequence publicKey:internal:masterPublicKey:]");
 }
 
-- (void)testBIP32SequenceSerializedPrivateMasterFromSeed
+- (void)testBIP32SequenceSerializedMasterPrivateKeyFromSeed
 {
     BRBIP32Sequence *seq = [BRBIP32Sequence new];
     NSData *seed = @"000102030405060708090a0b0c0d0e0f".hexToData;
-    NSString *xprv = [seq serializedPrivateMasterFromSeed:seed];
+    NSString *xprv = [seq serializedMasterPrivateKeyFromSeed:seed];
     
-    NSLog(@"000102030405060708090a0b0c0d0e0f xpriv = %@", xprv);
+    NSLog(@"000102030405060708090a0b0c0d0e0f xprv = %@", xprv);
     
     XCTAssertEqualObjects(xprv,
      @"xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi",
-                         @"[BRBIP32Sequence serializedPrivateMasterFromSeed:]");
+                         @"[BRBIP32Sequence serializedMasterPrivateKeyFromSeed:]");
 }
 
 - (void)testBIP32SequenceSerializedMasterPublicKey

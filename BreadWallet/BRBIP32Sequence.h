@@ -42,7 +42,10 @@
 - (NSData *)authPublicKeyFromSeed:(NSData *)seed;
 - (NSString *)authPrivateKeyFromSeed:(NSData *)seed;
 
-- (NSString *)serializedPrivateMasterFromSeed:(NSData *)seed;
+- (NSString *)serializedMasterPrivateKeyFromSeed:(NSData *)seed;
 - (NSString *)serializedMasterPublicKey:(NSData *)masterPublicKey;
+
+- (NSData *)parseMasterPrivateKey:(NSString *)xprv;
+- (NSData *)parseMasterPublicKey:(NSString *)xpub;
 
 @end

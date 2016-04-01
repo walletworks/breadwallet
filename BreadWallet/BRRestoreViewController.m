@@ -31,9 +31,9 @@
 #import "NSString+Bitcoin.h"
 #import "NSManagedObject+Sugar.h"
 #import "BREventManager.h"
+#import "BRBIP32Sequence.h"
 
 #define PHRASE_LENGTH 12
-
 
 @interface BRRestoreViewController ()
 
@@ -136,6 +136,7 @@
 
 - (BOOL)textView:(UITextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text
 {
+    static BRBIP32Sequence *bip32 = nil;
     static NSCharacterSet *invalid = nil;
     static dispatch_once_t onceToken = 0;
     
@@ -144,6 +145,7 @@
 
         [set formUnionWithCharacterSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
         invalid = set.invertedSet;
+        bip32 = [BRBIP32Sequence new];
     });
 
     if (! [text isEqual:@"\n"]) return YES; // not done entering phrase
@@ -170,7 +172,9 @@
             [self.textView resignFirstResponder];
             [self performSelector:@selector(wipeWithPhrase:) withObject:phrase afterDelay:0.0];
         }
-        else if (incorrect && noWallet && [textView.text isValidBitcoinAddress]) { // address list watch only wallet
+        else if (incorrect && noWallet && ([textView.text isValidBitcoinAddress] ||
+                                           [bip32 parseMasterPublicKey:textView.text])) {
+            // address list or xpub watch only wallet
             manager.seedPhrase = @"wipe";
 
             [[NSManagedObject context] performBlockAndWait:^{
@@ -178,13 +182,21 @@
                 
                 for (NSString *s in [textView.text componentsSeparatedByCharactersInSet:[NSCharacterSet
                                      alphanumericCharacterSet].invertedSet]) {
-                    if (! [s isValidBitcoinAddress]) continue;
+                    if ([s isValidBitcoinAddress]) {
+                        BRAddressEntity *e = [BRAddressEntity managedObject];
                     
-                    BRAddressEntity *e = [BRAddressEntity managedObject];
-                    
-                    e.address = s;
-                    e.index = n++;
-                    e.internal = NO;
+                        e.address = s;
+                        e.index = n++;
+                        e.internal = NO;
+                    }
+                    else if ([bip32 parseMasterPublicKey:s]) {
+                        NSMutableData *mpk = [[bip32 parseMasterPublicKey:s] mutableCopy];
+
+                        [mpk appendBytes:"\0" length:1]; // mark master pub key as watch only
+                        manager.masterPublicKey = mpk;
+                        [BRAddressEntity deleteObjects:[BRAddressEntity allObjects]];
+                        break;
+                    }
                 }
             }];
             

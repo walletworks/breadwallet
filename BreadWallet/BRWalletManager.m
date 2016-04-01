@@ -341,13 +341,18 @@ static NSString *getKeychainString(NSString *key, NSError **error)
 // true if this is a "watch only" wallet with no signing ability
 - (BOOL)watchOnly
 {
-    return (self.masterPublicKey && self.masterPublicKey.length == 0) ? YES : NO;
+    return (self.masterPublicKey.length != 69) ? YES : NO;
 }
 
 // master public key used to generate wallet addresses
 - (NSData *)masterPublicKey
 {
     return getKeychainData(MASTER_PUBKEY_KEY, nil);
+}
+
+- (void)setMasterPublicKey:(NSData *)masterPubKey
+{
+    setKeychainData(masterPubKey, MASTER_PUBKEY_KEY, NO);
 }
 
 // requesting seedPhrase will trigger authentication

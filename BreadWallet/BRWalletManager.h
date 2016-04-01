@@ -49,7 +49,7 @@
 @property (nonatomic, readonly) BOOL watchOnly; // true if this is a "watch only" wallet with no signing ability
 @property (nonatomic, strong) id<BRKeySequence> sequence;
 @property (nonatomic, strong) id<BRMnemonic> mnemonic;
-@property (nonatomic, readonly) NSData *masterPublicKey; // master public key used to generate wallet addresses
+@property (nonatomic, copy) NSData *masterPublicKey; // master public key used to generate wallet addresses
 @property (nonatomic, copy) NSString *seedPhrase; // requesting seedPhrase will trigger authentication
 @property (nonatomic, readonly) NSTimeInterval seedCreationTime; // interval since refrence date, 00:00:00 01/01/01 GMT
 @property (nonatomic, readonly) NSTimeInterval secureTime; // last known time from an ssl server connection
