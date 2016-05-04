@@ -752,7 +752,7 @@ masterPublicKey:(NSData *)masterPublicKey seed:(NSData *(^)(NSString *authprompt
 
     for (NSValue *hash in transaction.inputHashes) {
         BRTransaction *tx = self.allTx[hash];
-        uint32_t n = [transaction.inputIndexes[i++] intValue];
+        uint32_t n = [transaction.inputIndexes[i++] unsignedIntValue];
 
         if (n < tx.outputAddresses.count && [self containsAddress:tx.outputAddresses[n]]) {
             amount += [tx.outputAmounts[n] unsignedLongLongValue];
@@ -770,7 +770,7 @@ masterPublicKey:(NSData *)masterPublicKey seed:(NSData *(^)(NSString *authprompt
 
     for (NSValue *hash in transaction.inputHashes) {
         BRTransaction *tx = self.allTx[hash];
-        uint32_t n = [transaction.inputIndexes[i++] intValue];
+        uint32_t n = [transaction.inputIndexes[i++] unsignedIntValue];
 
         if (n >= tx.outputAmounts.count) return UINT64_MAX;
         amount += [tx.outputAmounts[n] unsignedLongLongValue];

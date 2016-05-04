@@ -400,23 +400,37 @@ static const char *dns_seeds[] = {
     self.filterUpdateHeight = self.lastBlockHeight;
     self.fpRate = BLOOM_REDUCED_FALSEPOSITIVE_RATE;
 
-    NSUInteger elemCount = manager.wallet.addresses.count + manager.wallet.unspentOutputs.count;
+    BRUTXO o;
+    NSData *d;
+    NSUInteger i, elemCount = manager.wallet.addresses.count + manager.wallet.unspentOutputs.count;
     BRBloomFilter *filter = [[BRBloomFilter alloc] initWithFalsePositiveRate:self.fpRate
                              forElementCount:elemCount + 100 tweak:self.tweak flags:BLOOM_UPDATE_ALL];
-
+    
     for (NSString *address in manager.wallet.addresses) {// add addresses to watch for tx receiveing money to the wallet
         NSData *hash = address.addressToHash160;
-
+        
         if (hash && ! [filter containsData:hash]) [filter insertData:hash];
     }
-
+    
     for (NSValue *utxo in manager.wallet.unspentOutputs) { // add UTXOs to watch for tx sending money from the wallet
-        BRUTXO o;
-        NSData *d;
-        
         [utxo getValue:&o];
-        d = [NSData dataWithBytes:&o length:sizeof(o)];
+        d = brutxo_data(o);
         if (! [filter containsData:d]) [filter insertData:d];
+    }
+    
+    for (BRTransaction *tx in manager.wallet.recentTransactions) { // also add TXOs spent within the last 100 blocks
+        if (tx.blockHeight != TX_UNCONFIRMED && tx.blockHeight + 100 < self.lastBlockHeight) break;
+        i = 0;
+        
+        for (NSValue *hash in tx.inputHashes) {
+            [hash getValue:&o.hash];
+            o.n = [tx.inputIndexes[i++] unsignedIntValue];
+            
+            if ([manager.wallet transactionForHash:o.hash]) {
+                d = brutxo_data(o);
+                if (! [filter containsData:d]) [filter insertData:d];
+            }
+        }
     }
 
     // TODO: XXXX if already synced, recursively add inputs of unconfirmed receives
