@@ -62,6 +62,7 @@
 #define CURRENCY_NAMES_KEY      @"CURRENCY_NAMES"
 #define CURRENCY_PRICES_KEY     @"CURRENCY_PRICES"
 #define SPEND_LIMIT_AMOUNT_KEY  @"SPEND_LIMIT_AMOUNT"
+#define BTC_DENOMINATION        @"BTC_DENOMINATION"
 #define PIN_UNLOCK_TIME_KEY     @"PIN_UNLOCK_TIME"
 #define SECURE_TIME_KEY         @"SECURE_TIME"
 #define FEE_PER_KB_KEY          @"FEE_PER_KB"
@@ -236,6 +237,7 @@ static NSDictionary *getKeychainDict(NSString *key, NSError **error)
     self.mnemonic = [BRBIP39Mnemonic new];
     self.reachability = [Reachability reachabilityForInternetConnection];
     self.failedPins = [NSMutableSet set];
+
     _format = [NSNumberFormatter new];
     self.format.lenient = YES;
     self.format.numberStyle = NSNumberFormatterCurrencyStyle;
@@ -244,10 +246,24 @@ static NSDictionary *getKeychainDict(NSString *key, NSError **error)
                                   stringByReplacingCharactersInRange:[self.format.positiveFormat rangeOfString:@"#"]
                                   withString:@"-#"];
     self.format.currencyCode = @"XBT";
-    self.format.currencySymbol = BITS NARROW_NBSP;
-    self.format.maximumFractionDigits = 2;
-    self.format.minimumFractionDigits = 0; // iOS 8 bug, minimumFractionDigits now has to be set after currencySymbol
-    self.format.maximum = @(MAX_MONEY/(int64_t)pow(10.0, self.format.maximumFractionDigits));
+
+    // transitional code: convert/remove old setting .. should be removed asap
+    {   
+        #define SETTINGS_MAX_DIGITS_KEY     @"SETTINGS_MAX_DIGITS"
+        
+        NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
+        if([defs integerForKey:SETTINGS_MAX_DIGITS_KEY] == 8) {
+            self.btcDenomination = SATOSHIS;
+        }
+        [defs removeObjectForKey:SETTINGS_MAX_DIGITS_KEY];
+
+        #undef SETTINGS_MAX_DIGITS_KEY
+    }
+
+    // install user preference.
+    [self setBtcDenomination:self.btcDenomination];
+
+
     _localFormat = [NSNumberFormatter new];
     self.localFormat.lenient = YES;
     self.localFormat.numberStyle = NSNumberFormatterCurrencyStyle;
@@ -828,6 +844,52 @@ static NSDictionary *getKeychainDict(NSString *key, NSError **error)
         [[NSUserDefaults standardUserDefaults] setDouble:spendingLimit forKey:SPEND_LIMIT_AMOUNT_KEY];
     }
 }
+
+// bits vs. mBTC vs. BTC
+- (uint64_t)btcDenomination
+{
+    if (![[NSUserDefaults standardUserDefaults] objectForKey:BTC_DENOMINATION]) {
+        // default is, and always will be, "bits" == 100 satoshi/unit shown to user
+        return 100;
+    }
+
+    return [[NSUserDefaults standardUserDefaults] doubleForKey:BTC_DENOMINATION];
+}
+
+- (void)setBtcDenomination:(uint64_t)denom
+{
+    // use setDouble since setInteger won't hold a uint64_t
+    [[NSUserDefaults standardUserDefaults] setDouble:denom forKey:BTC_DENOMINATION];
+
+    self.format.currencyCode = @"XBT";
+    switch(denom) {
+        case 100:
+            // "bits"
+            self.format.currencySymbol = BITS NARROW_NBSP;
+            self.format.maximumFractionDigits = 2;
+            self.format.minimumFractionDigits = 0;
+            break;
+        case 100000:
+            // mBTC: ugly and not very popular; not current used
+            self.format.currencySymbol = @"m" BTC NARROW_NBSP;
+            self.format.maximumFractionDigits = 5;
+            self.format.minimumFractionDigits = 3;
+            break;
+        case 100000000:
+            // full bitcoins
+            self.format.currencySymbol = BTC NARROW_NBSP;
+            self.format.maximumFractionDigits = 8;
+            self.format.minimumFractionDigits = 3;
+            break;
+    }
+
+    self.format.maximum = @(MAX_MONEY/(int64_t)pow(10.0, self.format.maximumFractionDigits));
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:BRWalletBalanceChangedNotification object:nil];
+    });
+}
+
 
 // last known time from an ssl server connection
 - (NSTimeInterval)secureTime

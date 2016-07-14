@@ -47,6 +47,9 @@
 
 @end
 
+// Show either 1BTC => fiat or 1fiat => BTC
+static BOOL quoteDirection;
+
 
 @implementation BRSettingsViewController
 
@@ -83,11 +86,15 @@
         self.balanceObserver =
             [[NSNotificationCenter defaultCenter] addObserverForName:BRWalletBalanceChangedNotification object:nil
             queue:nil usingBlock:^(NSNotification *note) {
-                if (self.selectorType == 0) {
-                    self.selectorController.title =
-                        [NSString stringWithFormat:@"%@ = %@",
-                         [manager localCurrencyStringForAmount:SATOSHIS/manager.localCurrencyPrice],
-                         [manager stringForAmount:SATOSHIS/manager.localCurrencyPrice]];
+                switch(self.selectorType) {
+                    default:
+                        break;
+                    case 0:
+                        [self navBarRedrawQuote];
+                        break;
+                    case 2:
+                        [self navBarRedrawOneUnit];
+                        break;
                 }
             }];
     }
@@ -248,22 +255,39 @@
     else [self.tableView deselectRowAtIndexPath:self.tableView.indexPathForSelectedRow animated:YES];
 }
 
+
+- (void) navBarRedrawOneUnit
+{
+    BRWalletManager *manager = [BRWalletManager sharedInstance];
+
+    self.selectorController.title =
+        [NSString stringWithFormat:NSLocalizedString(@"one bitcoin = %@", nil),
+         [manager stringForAmount:SATOSHIS]];
+}
+
+- (void) navBarRedrawQuote
+{
+    BRWalletManager *manager = [BRWalletManager sharedInstance];
+
+    if(quoteDirection) {
+        self.selectorController.title = [NSString stringWithFormat:@"%@ = %@",
+                                     [manager localCurrencyStringForAmount:SATOSHIS/manager.localCurrencyPrice],
+                                     [manager stringForAmount:SATOSHIS/manager.localCurrencyPrice]];
+    } else {
+        self.selectorController.title = [NSString stringWithFormat:@"%@ = %@",
+                             [manager stringForAmount:SATOSHIS],
+                             [manager localCurrencyStringForAmount:SATOSHIS] 
+                    ];
+    }
+}
+
 - (IBAction)navBarSwipe:(id)sender
 {
     [BREventManager saveEvent:@"settings:nav_bar_swipe"];
-    BRWalletManager *manager = [BRWalletManager sharedInstance];
-    NSUInteger digits = (((manager.format.maximumFractionDigits - 2)/3 + 1) % 3)*3 + 2;
-    
-    manager.format.currencySymbol = [NSString stringWithFormat:@"%@%@" NARROW_NBSP, (digits == 5) ? @"m" : @"",
-                                     (digits == 2) ? BITS : BTC];
-    manager.format.maximumFractionDigits = digits;
-    manager.format.maximum = @(MAX_MONEY/(int64_t)pow(10.0, manager.format.maximumFractionDigits));
-    [[NSUserDefaults standardUserDefaults] setInteger:digits forKey:SETTINGS_MAX_DIGITS_KEY];
-    manager.localCurrencyCode = manager.localCurrencyCode; // force balance notification
-    self.selectorController.title = [NSString stringWithFormat:@"%@ = %@",
-                                     [manager localCurrencyStringForAmount:SATOSHIS/manager.localCurrencyPrice],
-                                     [manager stringForAmount:SATOSHIS/manager.localCurrencyPrice]];
-    [self.tableView reloadData];
+
+    // toggle direction of BTC quote vs. fait
+    quoteDirection = !quoteDirection;
+    [self navBarRedrawQuote];
 }
 
 #pragma mark - UITableViewDataSource
@@ -280,7 +304,7 @@
     
     switch (section) {
         case 0: return 2;
-        case 1: return (self.touchId) ? 3 : 2;
+        case 1: return (self.touchId) ? 4 : 3;
         case 2: return 3;
         case 3: return 1;
     }
@@ -328,10 +352,17 @@
             switch (indexPath.row) {
                 case 0:
                     cell = [tableView dequeueReusableCellWithIdentifier:selectorIdent];
+                    cell.textLabel.text = NSLocalizedString(@"local currency", nil);
                     cell.detailTextLabel.text = manager.localCurrencyCode;
                     break;
-            
+
                 case 1:
+                    cell = [tableView dequeueReusableCellWithIdentifier:selectorIdent];
+                    cell.textLabel.text = NSLocalizedString(@"bitcoin denomination", nil);
+                    cell.detailTextLabel.text = (manager.btcDenomination == 100) ? BITS : BTC;
+                    break;
+            
+                case 2:
                     if (self.touchId) {
                         cell = [tableView dequeueReusableCellWithIdentifier:selectorIdent];
                         cell.textLabel.text = NSLocalizedString(@"touch id limit", nil);
@@ -340,7 +371,7 @@
                         goto _switch_cell;
                     }
                     break;
-                case 2:
+                case 3:
                 {
 _switch_cell:
                     cell = [tableView dequeueReusableCellWithIdentifier:@"SwitchCell" forIndexPath:indexPath];
@@ -545,11 +576,35 @@ _switch_cell:
             if (! self.navBarSwipe) {
                 self.navBarSwipe = [[UISwipeGestureRecognizer alloc] initWithTarget:self
                                                                              action:@selector(navBarSwipe:)];
-                self.navBarSwipe.direction = UISwipeGestureRecognizerDirectionLeft;
+                self.navBarSwipe.direction = UISwipeGestureRecognizerDirectionLeft
+                                                | UISwipeGestureRecognizerDirectionRight;
                 [self.navigationController.navigationBar addGestureRecognizer:self.navBarSwipe];
             }
         });
     }
+}
+
+// NEW: Let user's pick a bitcoin unit
+- (void)showDenomSelector
+{
+    [BREventManager saveEvent:@"settings:show_denom_selector"];
+    BRWalletManager *manager = [BRWalletManager sharedInstance];
+    self.selectorType = 2;
+    NSMutableArray *options = [NSMutableArray array];
+    
+    // XXX prepare this for i18n once we've finalized the text
+    [options addObject:BITS @" = bits (recommended)"];
+    [options addObject:BTC @" = Bitcoin"];
+
+    self.selectedOption = options[(manager.btcDenomination == 100) ? 0:1];
+    
+    self.selectorOptions = options;
+    self.noOptionsText = nil;
+
+    [self navBarRedrawOneUnit];
+
+    [self.navigationController pushViewController:self.selectorController animated:YES];
+    [self.selectorController.tableView reloadData];
 }
 
 - (void)showEarlyAccess
@@ -568,19 +623,35 @@ _switch_cell:
         currencyCodeIndex = [self.selectorOptions indexOfObject:self.selectedOption];
         if (indexPath.row < self.selectorOptions.count) self.selectedOption = self.selectorOptions[indexPath.row];
         
-        if (self.selectorType == 0) {
-            if (indexPath.row < manager.currencyCodes.count) {
-                manager.localCurrencyCode = manager.currencyCodes[indexPath.row];
-            }
-        }
-        else manager.spendingLimit = (indexPath.row > 0) ? pow(10, indexPath.row + 6) : 0;
-        
-        if (currencyCodeIndex < self.selectorOptions.count && currencyCodeIndex != indexPath.row) {
-            [tableView reloadRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:currencyCodeIndex inSection:0], indexPath]
-             withRowAnimation:UITableViewRowAnimationAutomatic];
+        switch(self.selectorType) {
+            case 0:
+                if (indexPath.row < manager.currencyCodes.count) {
+                    manager.localCurrencyCode = manager.currencyCodes[indexPath.row];
+                }
+                
+                if (currencyCodeIndex < self.selectorOptions.count && currencyCodeIndex != indexPath.row) {
+                    [tableView reloadRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:currencyCodeIndex inSection:0], indexPath]
+                     withRowAnimation:UITableViewRowAnimationAutomatic];
+                }
+                break;
+
+            case 1:
+                manager.spendingLimit = (indexPath.row > 0) ? pow(10, indexPath.row + 6) : 0;
+                break;
+
+            case 2:
+                // bitcoin units have been changed.
+                manager.btcDenomination = (indexPath.row == 0) ? 100 : 1E8;
+                if(manager.btcDenomination != 100) {
+                    [BREventManager saveEvent:@"settings:pick_btc"];
+                } else {
+                    [BREventManager saveEvent:@"settings:pick_bits"];
+                }
+                break;
         }
 
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
+        [tableView reloadData];
         [self.tableView reloadData];
         return;
     }
@@ -603,10 +674,13 @@ _switch_cell:
             switch (indexPath.row) {
                 case 0: // local currency
                     [self showCurrencySelector];
-                    
+                    break;
+
+                case 1: // bitcoin denomination
+                    [self showDenomSelector];
                     break;
                     
-                case 1: // touch id spending limit
+                case 2: // touch id spending limit
                     if (self.touchId) {
                         [self performSelector:@selector(touchIdLimit:) withObject:nil afterDelay:0.0];
                         break;
@@ -614,7 +688,7 @@ _switch_cell:
                         goto _deselect_switch;
                     }
                     break;
-                case 2:
+                case 3:
 _deselect_switch:
                     {
                         [tableView deselectRowAtIndexPath:indexPath animated:YES];
