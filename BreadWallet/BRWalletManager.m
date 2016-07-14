@@ -47,7 +47,7 @@
 #define UNSPENT_FAILOVER_URL @"https://insight.bitpay.com/api/addrs/utxo"
 #define FEE_PER_KB_URL       @"https://api.breadwallet.com/fee-per-kb"
 #define TICKER_URL           @"https://api.breadwallet.com/rates"
-#define TICKER_FAILOVER_URL  @"https://bitpay.com/rates"
+#define TICKER_FAILOVER_URL  @"https://apiv2.bitcoinaverage.com/constants/exchangerates/global"
 
 #define USER_AGENT [NSString stringWithFormat:@"/breadwallet:%@/",\
                     NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"]]
@@ -966,7 +966,7 @@ static NSDictionary *getKeychainDict(NSString *key, NSError **error)
     [self performSelector:@selector(updateExchangeRate) withObject:nil afterDelay:60.0];
 
     [self loadTicker:TICKER_URL withJSONKey:@"body" failoverHandler:^{
-        [self loadTicker:TICKER_FAILOVER_URL withJSONKey:@"data" failoverHandler:nil];
+        [self loadTicker:TICKER_FAILOVER_URL withJSONKey:@"rates" failoverHandler:nil];
     }];
 }
 
