@@ -26,7 +26,7 @@
 #import "BRRootViewController.h"
 #import "BRReceiveViewController.h"
 #import "BRSendViewController.h"
-#import "BRSettingsViewController.h"
+//#import "BRSettingsViewController.h"
 #import "BRRestoreViewController.h"
 #import "BRAppDelegate.h"
 #import "BRBubbleView.h"
@@ -424,17 +424,6 @@
 
     if (self.protectedObserver) [[NSNotificationCenter defaultCenter] removeObserver:self.protectedObserver];
     self.protectedObserver = nil;
-
-    if ([defs integerForKey:SETTINGS_MAX_DIGITS_KEY] == 5) {
-        manager.format.currencySymbol = @"m" BTC NARROW_NBSP;
-        manager.format.maximumFractionDigits = 5;
-        manager.format.maximum = @((MAX_MONEY/SATOSHIS)*1000);
-    }
-    else if ([defs integerForKey:SETTINGS_MAX_DIGITS_KEY] == 8) {
-        manager.format.currencySymbol = BTC NARROW_NBSP;
-        manager.format.maximumFractionDigits = 8;
-        manager.format.maximum = @(MAX_MONEY/SATOSHIS);
-    }
     
     if (manager.noWallet) {
         if (! manager.passcodeEnabled) {
