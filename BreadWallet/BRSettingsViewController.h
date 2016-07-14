@@ -26,8 +26,6 @@
 #import <UIKit/UIKit.h>
 #import <MessageUI/MessageUI.h>
 
-#define SETTINGS_MAX_DIGITS_KEY @"SETTINGS_MAX_DIGITS"
-
 @interface BRSettingsViewController : UITableViewController <UIAlertViewDelegate, MFMailComposeViewControllerDelegate>
 
 @end
