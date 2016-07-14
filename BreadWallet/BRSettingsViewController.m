@@ -75,8 +75,6 @@ static BOOL quoteDirection;
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
- 
-    BRWalletManager *manager = [BRWalletManager sharedInstance];
 
     if (self.navBarSwipe) [self.navigationController.navigationBar removeGestureRecognizer:self.navBarSwipe];
     self.navBarSwipe = nil;

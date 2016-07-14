@@ -881,6 +881,8 @@ static NSDictionary *getKeychainDict(NSString *key, NSError **error)
             self.format.maximumFractionDigits = 8;
             self.format.minimumFractionDigits = 3;
             break;
+        default:
+            assert(0);      // illegal value
     }
 
     self.format.maximum = @(MAX_MONEY/(int64_t)pow(10.0, self.format.maximumFractionDigits));
