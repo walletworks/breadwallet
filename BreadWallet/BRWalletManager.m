@@ -62,10 +62,12 @@
 #define CURRENCY_NAMES_KEY      @"CURRENCY_NAMES"
 #define CURRENCY_PRICES_KEY     @"CURRENCY_PRICES"
 #define SPEND_LIMIT_AMOUNT_KEY  @"SPEND_LIMIT_AMOUNT"
-#define BTC_DENOMINATION        @"BTC_DENOMINATION"
 #define PIN_UNLOCK_TIME_KEY     @"PIN_UNLOCK_TIME"
 #define SECURE_TIME_KEY         @"SECURE_TIME"
 #define FEE_PER_KB_KEY          @"FEE_PER_KB"
+
+//# 5=mBTC, 8=Bitcoin, undef=2=bits
+#define SETTINGS_MAX_DIGITS_KEY        @"SETTINGS_MAX_DIGITS"     
 
 #define MNEMONIC_KEY        @"mnemonic"
 #define CREATION_TIME_KEY   @"creationtime"
@@ -247,20 +249,7 @@ static NSDictionary *getKeychainDict(NSString *key, NSError **error)
                                   withString:@"-#"];
     self.format.currencyCode = @"XBT";
 
-    // transitional code: convert/remove old setting .. should be removed asap
-    {   
-        #define SETTINGS_MAX_DIGITS_KEY     @"SETTINGS_MAX_DIGITS"
-        
-        NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
-        if([defs integerForKey:SETTINGS_MAX_DIGITS_KEY] == 8) {
-            self.btcDenomination = SATOSHIS;
-        }
-        [defs removeObjectForKey:SETTINGS_MAX_DIGITS_KEY];
-
-        #undef SETTINGS_MAX_DIGITS_KEY
-    }
-
-    // install user preference.
+    // install user preference for how to display.
     [self setBtcDenomination:self.btcDenomination];
 
 
@@ -846,43 +835,42 @@ static NSDictionary *getKeychainDict(NSString *key, NSError **error)
 }
 
 // bits vs. mBTC vs. BTC
-- (uint64_t)btcDenomination
+- (int)btcDenomination
 {
-    if (![[NSUserDefaults standardUserDefaults] objectForKey:BTC_DENOMINATION]) {
+    if (![[NSUserDefaults standardUserDefaults] objectForKey:SETTINGS_MAX_DIGITS_KEY]) {
         // default is, and always will be, "bits" == 100 satoshi/unit shown to user
-        return 100;
+        return 2;
     }
 
-    return [[NSUserDefaults standardUserDefaults] doubleForKey:BTC_DENOMINATION];
+    return (int)[[NSUserDefaults standardUserDefaults] integerForKey:SETTINGS_MAX_DIGITS_KEY];
 }
 
-- (void)setBtcDenomination:(uint64_t)denom
+- (void)setBtcDenomination:(int)denom
 {
     // use setDouble since setInteger won't hold a uint64_t
-    [[NSUserDefaults standardUserDefaults] setDouble:denom forKey:BTC_DENOMINATION];
+    [[NSUserDefaults standardUserDefaults] setInteger:denom forKey:SETTINGS_MAX_DIGITS_KEY];
 
     self.format.currencyCode = @"XBT";
     switch(denom) {
-        case 100:
+        default:
+        case 2:
             // "bits"
             self.format.currencySymbol = BITS NARROW_NBSP;
             self.format.maximumFractionDigits = 2;
             self.format.minimumFractionDigits = 0;
             break;
-        case 100000:
-            // mBTC: ugly and not very popular; not current used
+        case 5:
+            // mBTC
             self.format.currencySymbol = @"m" BTC NARROW_NBSP;
             self.format.maximumFractionDigits = 5;
-            self.format.minimumFractionDigits = 3;
+            self.format.minimumFractionDigits = 0;
             break;
-        case 100000000:
+        case 8:
             // full bitcoins
             self.format.currencySymbol = BTC NARROW_NBSP;
             self.format.maximumFractionDigits = 8;
             self.format.minimumFractionDigits = 3;
             break;
-        default:
-            assert(0);      // illegal value
     }
 
     self.format.maximum = @(MAX_MONEY/(int64_t)pow(10.0, self.format.maximumFractionDigits));

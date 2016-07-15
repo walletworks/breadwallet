@@ -357,7 +357,8 @@ static BOOL quoteDirection;
                 case 1:
                     cell = [tableView dequeueReusableCellWithIdentifier:selectorIdent];
                     cell.textLabel.text = NSLocalizedString(@"bitcoin denomination", nil);
-                    cell.detailTextLabel.text = (manager.btcDenomination == 100) ? BITS : BTC;
+                    cell.detailTextLabel.text = (manager.btcDenomination == 5) ? MBTC: 
+                                                    ((manager.btcDenomination == 8) ? BTC : BITS);
                     break;
             
                 case 2:
@@ -592,9 +593,21 @@ _switch_cell:
     
     // XXX prepare this for i18n once we've finalized the text
     [options addObject:BITS @" = bits (recommended)"];
-    [options addObject:BTC @" = Bitcoin"];
+    [options addObject:MBTC @" = milli-Bitcoins"];
+    [options addObject:BTC @" = Bitcoins"];
 
-    self.selectedOption = options[(manager.btcDenomination == 100) ? 0:1];
+    switch(manager.btcDenomination) {
+        default:
+        case 2:
+            self.selectedOption = options[0];
+            break;
+        case 5:
+            self.selectedOption = options[1];
+            break;
+        case 8:
+            self.selectedOption = options[2];
+            break;
+    }
     
     self.selectorOptions = options;
     self.noOptionsText = nil;
@@ -637,15 +650,24 @@ _switch_cell:
                 manager.spendingLimit = (indexPath.row > 0) ? pow(10, indexPath.row + 6) : 0;
                 break;
 
-            case 2:
+            case 2: {
                 // bitcoin units have been changed.
-                manager.btcDenomination = (indexPath.row == 0) ? 100 : 1E8;
-                if(manager.btcDenomination != 100) {
-                    [BREventManager saveEvent:@"settings:pick_btc"];
-                } else {
-                    [BREventManager saveEvent:@"settings:pick_bits"];
+                switch(indexPath.row) { 
+                    default:
+                    case 0:        
+                        manager.btcDenomination = 2;
+                        [BREventManager saveEvent:@"settings:pick_bits"];
+                        break;
+                    case 1:        
+                        manager.btcDenomination = 5;
+                        [BREventManager saveEvent:@"settings:pick_mbtc"];
+                        break;
+                    case 2:        
+                        manager.btcDenomination = 8;
+                        [BREventManager saveEvent:@"settings:pick_btc"];
+                        break;
                 }
-                break;
+            }
         }
 
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
