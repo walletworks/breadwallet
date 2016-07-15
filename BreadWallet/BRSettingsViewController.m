@@ -356,7 +356,7 @@ static BOOL quoteDirection;
 
                 case 1:
                     cell = [tableView dequeueReusableCellWithIdentifier:selectorIdent];
-                    cell.textLabel.text = NSLocalizedString(@"bitcoin denomination", nil);
+                    cell.textLabel.text = NSLocalizedString(@"bitcoin units", nil);
                     cell.detailTextLabel.text = (manager.btcDenomination == 5) ? MBTC: 
                                                     ((manager.btcDenomination == 8) ? BTC : BITS);
                     break;
@@ -593,8 +593,8 @@ _switch_cell:
     
     // XXX prepare this for i18n once we've finalized the text
     [options addObject:BITS @" = bits (recommended)"];
-    [options addObject:MBTC @" = milli-Bitcoins"];
-    [options addObject:BTC @" = Bitcoins"];
+    [options addObject:MBTC @" = milli-bitcoins"];
+    [options addObject:BTC @" = bitcoins"];
 
     switch(manager.btcDenomination) {
         default:
@@ -696,7 +696,7 @@ _switch_cell:
                     [self showCurrencySelector];
                     break;
 
-                case 1: // bitcoin denomination
+                case 1: // bitcoin denomination/units
                     [self showDenomSelector];
                     break;
                     
